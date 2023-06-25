@@ -1,66 +1,89 @@
 package com.example.provider.service;
 
+import com.example.mapper.UserMapper;
+import com.example.pojo.User;
 import com.pcy.UserService;
 import org.apache.curator.shaded.com.google.common.hash.Hashing;
 import org.apache.dubbo.config.annotation.DubboService;
+import org.apache.ibatis.io.Resources;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.RequestBody;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 @DubboService(version = "1.0")
 public class UserServiceImpl implements UserService {
-    private final static HashMap<String,String> shortMap =new HashMap<>();
-    public String getUser( String longUrl){
-        if (StringUtils.isEmpty(longUrl)){
+    private final static ConcurrentHashMap<String, String> shortMap = new ConcurrentHashMap<>();
+    private static final String BASE_62_CHAR = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private static final int BASE = BASE_62_CHAR.length();
+
+    public String getShortUrl(String longUrl) throws IOException {
+        if (StringUtils.isEmpty(longUrl)) {
             throw new RuntimeException("longUrl is empty");
             /*return "400";*/
-        }else {
-            String[] split = longUrl.split("/");
-            StringBuilder pre = new StringBuilder();
-            for (int i = 0; i < split.length - 1; i++) {
-                pre.append(split[i]).append("/");
-            }
-            pre.append(fromBase10(Hashing.murmur3_32().hashString(split[split.length - 1], StandardCharsets.UTF_8).padToLong()));
-            System.out.println(longUrl);
-            shortMap.put(pre.toString(), longUrl);
-            return pre.toString();
         }
-    }
-    public static final String BASE_62_CHAR = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    public static final int BASE = BASE_62_CHAR.length();
-   /* public static long toBase10(String str) {
-        //从右边开始
-        return toBase10(new StringBuilder(str).reverse().toString().toCharArray());
+        String resource = "mybatis-config.xml";
+        InputStream inputStream = Resources.getResourceAsStream(resource);
+        SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+        UserMapper userMapper=sqlSession.getMapper(UserMapper.class);
+        String[] split = longUrl.split("/");
+        StringBuilder pre = new StringBuilder();
+        for (int i = 0; i < split.length - 1; i++) {
+            pre.append(split[i]).append("/");
+        }String temp=pre.toString();
+        pre.append(Base10toBase62(Hashing.murmur3_32().hashString(split[split.length - 1], StandardCharsets.UTF_8).padToLong()));
+        /*shortMap.put(pre.toString(), longUrl);*/
+        User user = userMapper.selectAll(pre.toString());
+        if (user==null){
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String timeStamp = dateFormat.format(new Date());
+            pre=new StringBuilder(temp);
+            pre.append(Base10toBase62(Hashing.murmur3_32().hashString(split[split.length - 1]+timeStamp, StandardCharsets.UTF_8).padToLong()));
+        }
+        userMapper.putOne(pre.toString(),longUrl);
+        sqlSession.commit();
+        sqlSession.close();
+        return pre.toString();
     }
 
-    private static long toBase10(char[] chars) {
-        long n = 0;
-        int pow = 0;
-        for(char item: chars){
-            n += toBase10(BASE_62_CHAR.indexOf(item),pow);
-            pow++;
+    public String getLongUrl(String shortUrl) throws IOException {
+        if (shortMap.containsKey(shortUrl)) {
+            String resource = "mybatis-config.xml";
+            InputStream inputStream = Resources.getResourceAsStream(resource);
+            SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+            SqlSession sqlSession = sqlSessionFactory.openSession(true);
+            UserMapper userMapper=sqlSession.getMapper(UserMapper.class);
+            User user = userMapper.selectAll(shortUrl);
+            sqlSession.commit();
+            sqlSession.close();
+            return user.getLong_url();
+        } else {
+            throw new RuntimeException("shortUrl is not found!");
         }
-        return n;
     }
 
-    private static long toBase10(int n, int pow) {
-        return n * (long) Math.pow(BASE, pow);
-    }*/
-    public static String fromBase10(long i) {
+    public String Base10toBase62(long i) {
         StringBuilder sb = new StringBuilder("");
         if (i == 0) {
             return "a";
         }
         while (i > 0) {
-            i = fromBase10(i, sb);
+            i = Base10toBase62(i, sb);
         }
         return sb.reverse().toString();
     }
 
-    private static long fromBase10(long i, final StringBuilder sb) {
-        int rem = (int)(i % BASE);
+    private long Base10toBase62(long i, final StringBuilder sb) {
+        int rem = (int) (i % BASE);
         sb.append(BASE_62_CHAR.charAt(rem));
         return i / BASE;
     }
