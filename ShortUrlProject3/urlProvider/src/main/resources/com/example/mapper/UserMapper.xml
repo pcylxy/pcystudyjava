@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserMapper">
+<!--    <select id="selectAll" resultType="com.example.pojo.User">
+        select long_url from user where short_url = #{shortUrl}
+    </select>
+    <insert id="putOne">
+        insert into user(short_url,long_url) values (#{shortUrl},#{longUrl})
+    </insert>-->
+
+</mapper>
