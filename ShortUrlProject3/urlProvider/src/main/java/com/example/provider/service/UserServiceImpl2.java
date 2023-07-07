@@ -1,4 +1,4 @@
-package com.example.provider.service;
+/*package com.example.provider.service;
 
 import com.pcy.UserService;
 import org.apache.dubbo.config.annotation.DubboService;
@@ -15,5 +15,5 @@ public class UserServiceImpl2 implements UserService {
     public String getLongUrl(String shortUrl) {
         return null;
     }
-}
+}*/
 

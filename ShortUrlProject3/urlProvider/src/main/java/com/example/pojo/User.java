@@ -4,6 +4,17 @@ public class User {
     private Integer id;
     private String short_url;
     private String long_url;
+    private long expiredTime;
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", short_url='" + short_url + '\'' +
+                ", long_url='" + long_url + '\'' +
+                ", expiredTime=" + expiredTime +
+                '}';
+    }
 
     public Integer getId() {
         return id;
@@ -29,12 +40,11 @@ public class User {
         this.long_url = long_url;
     }
 
-    @Override
-    public String toString() {
-        return "User{" +
-                "id=" + id +
-                ", short_url='" + short_url + '\'' +
-                ", long_url='" + long_url + '\'' +
-                '}';
+    public long getExpiredTime() {
+        return expiredTime;
+    }
+
+    public void setExpiredTime(long expiredTime) {
+        this.expiredTime = expiredTime;
     }
 }
